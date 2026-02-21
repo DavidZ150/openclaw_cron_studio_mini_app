@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"/>
+<title>Cron Studio</title>
+<style>
+:root{--bg:#f2f2f7;--card:#fff;--line:#e5e5ea;--text:#1c1c1e;--sub:#6e6e73;--blue:#007aff;--red:#ff3b30;--green:#34c759}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC",sans-serif;padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+.wrap{max-width:820px;margin:0 auto;padding:14px 14px 96px}
+h1{margin:6px 2px 12px;font-size:30px}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{padding:12px 14px;border-bottom:1px solid var(--line)}.row:last-child{border-bottom:0}
+.sub{font-size:12px;color:var(--sub)}
+.job{background:#fff;border:1px solid var(--line);border-radius:12px;padding:12px;margin:10px 0}
+.job .title{font-weight:700}.chip{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:#eef4ff;color:#265fb8;margin-right:6px}
+.actions{display:none;gap:8px;margin-top:10px}.actions.show{display:flex}
+button{border:0;border-radius:10px;padding:10px 12px;font-weight:600;font-size:15px;cursor:pointer}
+.ghost{background:#fff;border:1px solid var(--line)}.danger{background:var(--red);color:#fff}.primary{background:var(--blue);color:#fff}.ok{background:var(--green);color:#fff}
+.fab{position:fixed;right:20px;bottom:max(20px, env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--blue);color:#fff;font-size:34px;line-height:56px;text-align:center;box-shadow:0 8px 20px rgba(0,0,0,.22);z-index:9999;user-select:none}
+.closeBtn{position:fixed;left:max(12px, env(safe-area-inset-left));top:max(12px, env(safe-area-inset-top));width:40px;height:40px;border-radius:50%;background:#fff;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;font-size:20px;z-index:9999;box-shadow:0 4px 10px rgba(0,0,0,.08);cursor:pointer}
+.sheetWrap{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;justify-content:center;z-index:1000}
+.sheet{width:min(920px,100%);max-height:90vh;overflow:auto;background:#fff;border-radius:16px 16px 0 0;padding:12px}
+.sheet h3{margin:6px 2px 10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:640px){.grid{grid-template-columns:1fr}}
+input,select,textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fafafe;font-size:16px}
+textarea{min-height:96px}
+.hidden{display:none}
+button:active{opacity:0.7}
+</style>
+</head>
+<body>
+
+<button class="closeBtn" id="closeApp" aria-label="close">✕</button>
+
+<div class="wrap">
+<h1>Cron Studio</h1>
+<div class="card row" style="margin-bottom:10px">
+<b>现有 Cron</b>
+<div class="sub">点击任务卡片，展开"编辑 / 删除"</div>
+</div>
+<div id="list"></div>
+</div>
+
+<div class="fab" id="fab">+</div>
+
+<div class="sheetWrap" id="sheetWrap">
+<div class="sheet">
+<h3 id="sheetTitle">新增 Cron</h3>
+<div class="card">
+<div class="row grid">
+<div><label>任务名</label><input id="name" placeholder="例如：每周 host 扫描提醒"></div>
+<div><label>模式</label><select id="mode"><option value="at">一次</option><option value="interval">时间间隔</option><option value="repeat">重复 Repeat</option></select></div>
+</div>
+<div class="row" id="onceRow"><label>执行时间</label><input id="at" type="datetime-local"></div>
+<div class="row hidden" id="intervalRow">
+<div class="grid">
+<div><label>间隔数值</label><input id="ivValue" type="number" min="1" value="1"></div>
+<div><label>单位</label><select id="ivUnit"><option value="minute">分钟</option><option value="hour">小时</option><option value="day">天</option><option value="week">周</option><option value="month">月(按30天)</option></select></div>
+</div>
+</div>
+<div class="row hidden" id="repeatRow">
+<div class="grid">
+<div><label>重复周期</label><select id="rpCycle"><option value="day">日</option><option value="week">周</option><option value="month">月</option></select></div>
+<div><label>时间</label><input id="rpTime" type="time" value="09:00"></div>
+</div>
+<div class="grid" style="margin-top:8px" id="rpWeekRow">
+<div><label>每周星期</label><select id="rpWeekday"><option value="1">周一</option><option value="2">周二</option><option value="3">周三</option><option value="4">周四</option><option value="5">周五</option><option value="6">周六</option><option value="0">周日</option></select></div>
+<div class="sub" style="display:flex;align-items:flex-end">例如：每周一 09:00</div>
+</div>
+<div class="grid hidden" style="margin-top:8px" id="rpMonthRow">
+<div><label>每月几号</label><input id="rpMonthday" type="number" min="1" max="31" value="1"></div>
+<div class="sub" style="display:flex;align-items:flex-end">例如：每月1号 09:00</div>
+</div>
+</div>
+<div class="row"><label>内容</label><textarea id="text" placeholder="Reminder: ..."></textarea></div>
+<div class="row grid">
+<div><label>启用</label><select id="enabled"><option value="true">启用</option><option value="false">禁用</option></select></div>
+<div><label>预览</label><button class="ghost" id="previewBtn" style="width:100%">生成结构化预览</button></div>
+</div>
+<div class="row"><textarea id="preview" style="min-height:170px"></textarea></div>
+<div class="row" style="display:flex;gap:8px;flex-wrap:wrap">
+<button class="ghost" id="cancelBtn">取消</button>
+<button class="primary" id="saveBtn">保存</button>
+<button class="ok" id="confirmBtn">确认并生效</button>
+</div>
+</div>
+</div>
+</div>
+
+<!-- Telegram WebApp SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const KEY='cron_studio';
+let editId=null;
+
+// Telegram WebApp 初始化
+const tg = window.Telegram.WebApp;
+tg.ready();
+tg.expand();
+tg.setHeaderColor('#f2f2f7');
+tg.setBackgroundColor('#f2f2f7');
+
+// 关闭按钮
+$('closeApp').onclick=()=>tg.close();
+
+function seed(){
+if(!localStorage.getItem(KEY)){
+const demo=[
+{id:crypto.randomUUID(),job:{name:'每周一联系 Cambridge host',schedule:{kind:'cron',expr:'0 9 * * 1',tz:'Europe/Vienna'},payload:{kind:'systemEvent',text:'Reminder: 联系 Cambridge host 并更新进度'},sessionTarget:'main',enabled:true}},
+{id:crypto.randomUUID(),job:{name:'每月1号检查 fellowship 截止日期',schedule:{kind:'cron',expr:'30 8 1 * *',tz:'Europe/Vienna'},payload:{kind:'systemEvent',text:'Reminder: 检查本月 fellowship deadlines'},sessionTarget:'main',enabled:false}}
+];
+localStorage.setItem(KEY,JSON.stringify(demo));
+}
+}
+
+const jobs=()=>{try{return JSON.parse(localStorage.getItem(KEY)||'[]')}catch{return[]}};
+const saveJobs=(v)=>localStorage.setItem(KEY,JSON.stringify(v));
+
+function bindTap(el, fn){
+if(!el) return;
+const h=(e)=>{e.preventDefault();e.stopPropagation();fn(e);};
+el.addEventListener('click', h);
+el.addEventListener('touchend', h);
+}
+
+function render(){
+const list = jobs();
+$('list').innerHTML = list.map(x=>`<div class='job' data-id='${x.id}'>
+<div class='title'>${x.job.name}</div>
+<div class='sub'>${x.job.payload.text}</div>
+<div style='margin-top:6px'><span class='chip'>${x.job.schedule.kind}</span><span class='chip'>${x.job.enabled?'enabled':'disabled'}</span></div>
+<div class='actions' id='a_${x.id}'>
+<button class='ghost' data-act='edit' data-id='${x.id}'>编辑</button>
+<button class='danger' data-act='del' data-id='${x.id}'>删除</button>
+</div>
+</div>`).join('');
+
+document.querySelectorAll('.job').forEach(card=>{
+bindTap(card,(e)=>{
+if(e.target.closest('button')) return;
+const id = card.dataset.id;
+const box = $('a_'+id);
+document.querySelectorAll('.actions').forEach(a=>{if(a!==box) a.classList.remove('show');});
+box.classList.toggle('show');
+});
+});
+
+document.querySelectorAll('button[data-act]').forEach(btn=>{
+bindTap(btn,(e)=>{
+e.stopPropagation();
+const id=btn.dataset.id, act=btn.dataset.act;
+if(act==='del'){saveJobs(jobs().filter(x=>x.id!==id));render();}
+if(act==='edit'){
+const it=jobs().find(x=>x.id===id);
+if(!it) return;
+editId=id;
+const j=it.job;
+$('name').value=j.name||'';
+$('text').value=j.payload?.text||'';
+$('enabled').value=String(Boolean(j.enabled));
+if(j.schedule.kind==='at'){
+$('mode').value='at';
+$('at').value=new Date(j.schedule.at).toISOString().slice(0,16);
+}else if(j.schedule.kind==='every'){
+$('mode').value='interval';
+$('ivValue').value=Math.max(1,Math.floor((j.schedule.everyMs||3600000)/60000));
+$('ivUnit').value='minute';
+}else{
+$('mode').value='repeat';
+const p=j.schedule.expr.split(' ');
+$('rpTime').value=`${String(p[1]).padStart(2,'0')}:${String(p[0]).padStart(2,'0')}`;
+if(p[2]==='*'&&p[4]==='*')$('rpCycle').value='day';
+else if(p[2]==='*'){$('rpCycle').value='week'; $('rpWeekday').value=p[4];}
+else{$('rpCycle').value='month'; $('rpMonthday').value=p[2];}
+}
+syncMode();syncRepeat();
+$('sheetTitle').textContent='编辑 Cron';
+$('sheetWrap').style.display='flex';
+}
+});
+});
+}
+
+function syncMode(){
+const m=$('mode').value;
+$('onceRow').classList.toggle('hidden',m!=='at');
+$('intervalRow').classList.toggle('hidden',m!=='interval');
+$('repeatRow').classList.toggle('hidden',m!=='repeat');
+}
+
+function syncRepeat(){
+const c=$('rpCycle').value;
+$('rpWeekRow').classList.toggle('hidden',c!=='week');
+$('rpMonthRow').classList.toggle('hidden',c!=='month');
+}
+
+function toMs(v,u){v=Number(v||1);return u==='minute'?v*60000:u==='hour'?v*3600000:u==='day'?v*86400000:u==='week'?v*7*86400000:v*30*86400000}
+
+function build(){
+const mode=$('mode').value;
+let schedule;
+if(mode==='at')schedule={kind:'at',at:new Date($('at').value).toISOString()};
+if(mode==='interval')schedule={kind:'every',everyMs:toMs($('ivValue').value,$('ivUnit').value)};
+if(mode==='repeat'){
+const[hh,mm]=$('rpTime').value.split(':').map(Number);
+const cyc=$('rpCycle').value;
+if(cyc==='day')schedule={kind:'cron',expr:`${mm} ${hh} * * *`,tz:'Europe/Vienna'};
+if(cyc==='week')schedule={kind:'cron',expr:`${mm} ${hh} * * ${$('rpWeekday').value}`,tz:'Europe/Vienna'};
+if(cyc==='month')schedule={kind:'cron',expr:`${mm} ${hh} ${$('rpMonthday').value||1} * *`,tz:'Europe/Vienna'};
+}
+return{name:$('name').value.trim()||'unnamed_job',schedule,payload:{kind:'systemEvent',text:$('text').value.trim()||'Reminder'},sessionTarget:'main',enabled:$('enabled').value==='true'};
+}
+
+bindTap($('fab'),()=>{
+editId=null;
+$('name').value='';
+$('mode').value='at';
+$('text').value='';
+$('enabled').value='true';
+const n=new Date(Date.now()+3600000);
+$('at').value=n.toISOString().slice(0,16);
+$('ivValue').value='1';
+$('ivUnit').value='hour';
+$('rpCycle').value='day';
+$('rpTime').value='09:00';
+syncMode();syncRepeat();
+$('sheetTitle').textContent='新增 Cron';
+$('sheetWrap').style.display='flex';
+});
+
+bindTap($('cancelBtn'),()=>$('sheetWrap').style.display='none');
+
+bindTap($('previewBtn'),()=>{$('preview').value=JSON.stringify(build(),null,2);});
+
+bindTap($('saveBtn'),()=>{
+const j=build();
+const list=jobs();
+if(editId){
+const i=list.findIndex(x=>x.id===editId);
+if(i>=0)list[i].job=j;
+}else list.unshift({id:crypto.randomUUID(),job:j});
+saveJobs(list);
+render();
+$('sheetWrap').style.display='none';
+tg.sendData(JSON.stringify({action:'saved',job:j}));
+});
+
+bindTap($('confirmBtn'),()=>{
+const j=build();
+$('preview').value=JSON.stringify({...j,_note:'正式版会调用 cron.add 接口'},null,2);
+tg.sendData(JSON.stringify({action:'confirm',job:j}));
+tg.showAlert('已发送任务到系统（demo模式）');
+});
+
+$('mode').addEventListener('change',syncMode);
+$('rpCycle').addEventListener('change',syncRepeat);
+
+seed();
+syncMode();
+syncRepeat();
+render();
+</script>
+</body>
+</html>
